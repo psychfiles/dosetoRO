@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRI Receptor Occupancy Calculator</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; padding-top: 50px; }
+        .calculator-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 450px; border: 1px solid #e1e4e8; }
+        h2 { margin-top: 0; color: #2c3e50; text-align: center; font-size: 22px; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 25px; }
+        
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; font-size: 14px; }
+        
+        select, input { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        
+        select:focus, input:focus { border-color: #3498db; outline: none; }
+        
+        input:disabled { background-color: #f8f9fa; color: #7f8c8d; cursor: not-allowed; }
+        
+        .result-box { 
+            background: #eef2f7; 
+            padding: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+            margin-top: 25px; 
+            border-left: 5px solid #3498db;
+        }
+        
+        .result-label { font-size: 14px; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .result-value { font-size: 32px; font-weight: bold; color: #2c3e50; }
+        
+        .param-row { display: flex; gap: 15px; }
+        .param-col { flex: 1; }
+        
+        .footer { font-size: 12px; color: #999; text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="calculator-card">
+    <h2>SRI Receptor Occupancy Calculator</h2>
+    
+    <div class="input-group">
+        <label for="medSelect">Medication</label>
+        <select id="medSelect" onchange="handleMedChange()">
+            <option value="none" disabled>Select Medication...</option>
+            </select>
+    </div>
+
+    <div class="param-row">
+        <div class="param-col">
+            <div class="input-group">
+                <label for="emax">Emax (%)</label>
+                <input type="number" id="emax" disabled oninput="calculateRO()">
+            </div>
+        </div>
+        <div class="param-col">
+            <div class="input-group">
+                <label for="ed50">ED50 (mg)</label>
+                <input type="number" id="ed50" disabled oninput="calculateRO()">
+            </div>
+        </div>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0 20px 0;">
+
+    <div class="input-group">
+        <label for="dose">Dose (mg)</label>
+        <input type="number" id="dose" value="50" step="1" oninput="calculateRO()">
+    </div>
+
+    <div class="result-box">
+        <div class="result-label">Calculated RO</div>
+        <div class="result-value" id="resultDisplay">-- %</div>
+    </div>
+    
+    <div class="footer">
+        Formula: RO = (Emax × Dose) / (ED50 + Dose)
+    </div>
+</div>
+
+<script>
+    // --- 1. Medication Data ---
+    const MED_DATA = {
+        'citalopram': { name: 'Citalopram (Striatum)', emax: 83.98, ed50: 2.33 },
+        'desvenlafaxine': { name: 'Desvenlafaxine (Striatum)', emax: 100.22, ed50: 16.11 },
+        'duloxetine': { name: 'Duloxetine (Thalamus)', emax: 90.75, ed50: 6.27 },
+        'escitalopram': { name: 'Escitalopram (Dorsal Raphe)', emax: 89.57, ed50: 2.72 },
+        'fluoxetine': { name: 'Fluoxetine (Striatum)', emax: 86.12, ed50: 1.89 },
+        'paroxetine': { name: 'Paroxetine (Striatum)', emax: 97.14, ed50: 5.60 },
+        'sertraline': { name: 'Sertraline (Striatum)', emax: 92.01, ed50: 7.72 },
+        'venlafaxine': { name: 'Venlafaxine XR (Striatum)', emax: 90.07, ed50: 5.80 },
+        'vortioxetine': { name: 'Vortioxetine (Raphe Nuclei)', emax: 102.24, ed50: 4.68 }
+    };
+
+    // --- 2. Initialize Logic ---
+    const medSelect = document.getElementById('medSelect');
+    const emaxInput = document.getElementById('emax');
+    const ed50Input = document.getElementById('ed50');
+    const doseInput = document.getElementById('dose');
+    const resultDisplay = document.getElementById('resultDisplay');
+
+    // Populate Dropdown
+    for (const [key, data] of Object.entries(MED_DATA)) {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = data.name;
+        medSelect.appendChild(option);
+    }
+    
+    // Add Manual Option
+    const manualOption = document.createElement('option');
+    manualOption.value = 'manual';
+    manualOption.textContent = 'Manual Input';
+    medSelect.appendChild(manualOption);
+
+    // Set Default (Sertraline)
+    medSelect.value = 'sertraline';
+    handleMedChange();
+
+    // --- 3. Functions ---
+
+    function handleMedChange() {
+        const selection = medSelect.value;
+        
+        if (selection === 'manual') {
+            emaxInput.disabled = false;
+            ed50Input.disabled = false;
+            // Clear or keep previous values? Let's keep for ease, or set to 0.
+            // Keeping previous allows user to see what they were editing.
+        } else {
+            emaxInput.disabled = true;
+            ed50Input.disabled = true;
+            if (MED_DATA[selection]) {
+                emaxInput.value = MED_DATA[selection].emax;
+                ed50Input.value = MED_DATA[selection].ed50;
+            }
+        }
+        calculateRO();
+    }
+
+    function calculateRO() {
+        const emax = parseFloat(emaxInput.value);
+        const ed50 = parseFloat(ed50Input.value);
+        const dose = parseFloat(doseInput.value);
+
+        if (isNaN(emax) || isNaN(ed50) || isNaN(dose) || dose < 0) {
+            resultDisplay.innerHTML = '<span style="color:#e74c3c; font-size:20px;">Invalid</span>';
+            return;
+        }
+
+        // Calculation
+        let ro = 0;
+        if ((ed50 + dose) !== 0) {
+            ro = (emax * dose) / (ed50 + dose);
+        }
+
+        // Cap at Emax visually if needed, though formula handles asymptotic behavior
+        if (ro > emax) ro = emax;
+        if (ro < 0) ro = 0;
+
+        resultDisplay.textContent = ro.toFixed(2) + '%';
+    }
+</script>
+
+</body>
+</html>

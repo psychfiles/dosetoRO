@@ -5,55 +5,163 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SRI Receptor Occupancy Calculator</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; padding-top: 50px; }
-        .calculator-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 450px; border: 1px solid #e1e4e8; }
-        h2 { margin-top: 0; color: #2c3e50; text-align: center; font-size: 22px; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 25px; }
-        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .calculator-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 560px;
+            border: 1px solid #e1e4e8;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 560px;
+            border: 1px solid #e1e4e8;
+            margin-top: 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            text-align: center;
+            font-size: 22px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 16px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
         .input-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; font-size: 14px; }
-        
-        select, input { 
-            width: 100%; 
-            padding: 10px; 
-            border: 1px solid #ddd; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
             font-size: 16px;
             transition: border-color 0.2s;
         }
-        
+
         select:focus, input:focus { border-color: #3498db; outline: none; }
-        
         input:disabled { background-color: #f8f9fa; color: #7f8c8d; cursor: not-allowed; }
-        
-        .result-box { 
-            background: #eef2f7; 
-            padding: 20px; 
-            border-radius: 8px; 
-            text-align: center; 
-            margin-top: 25px; 
+
+        .result-box {
+            background: #eef2f7;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 25px;
             border-left: 5px solid #3498db;
         }
-        
-        .result-label { font-size: 14px; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .result-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
         .result-value { font-size: 32px; font-weight: bold; color: #2c3e50; }
-        
+
         .param-row { display: flex; gap: 15px; }
         .param-col { flex: 1; }
-        
+
         .footer { font-size: 12px; color: #999; text-align: center; margin-top: 20px; }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            cursor: crosshair;
+        }
+
+        canvas#roChart {
+            display: block;
+            width: 100% !important;
+        }
+
+        .click-info {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            font-size: 14px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 44px;
+        }
+
+        .click-info .click-val {
+            font-weight: 700;
+            color: #e74c3c;
+            font-size: 16px;
+        }
+
+        .chart-hint {
+            font-size: 12px;
+            color: #aaa;
+            text-align: center;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .fda-label {
+            font-size: 11px;
+            color: #888;
+            text-align: right;
+            margin-top: 6px;
+        }
     </style>
 </head>
 <body>
 
+<!-- ── Calculator Card ── -->
 <div class="calculator-card">
     <h2>SRI Receptor Occupancy Calculator</h2>
-    
+
     <div class="input-group">
         <label for="medSelect">Medication</label>
         <select id="medSelect" onchange="handleMedChange()">
             <option value="none" disabled>Select Medication...</option>
-            </select>
+        </select>
     </div>
 
     <div class="param-row">
@@ -82,61 +190,348 @@
         <div class="result-label">Calculated RO</div>
         <div class="result-value" id="resultDisplay">-- %</div>
     </div>
-    
-    <div class="footer">
-        Formula: RO = (Emax × Dose) / (ED50 + Dose)
+
+    <div class="footer">Formula: RO = (Emax × Dose) / (ED50 + Dose)</div>
+</div>
+
+<!-- ── Chart Card ── -->
+<div class="chart-card">
+    <h3>Dose–Occupancy Curve</h3>
+
+    <div class="chart-container">
+        <canvas id="roChart"></canvas>
     </div>
+
+    <div class="click-info" id="clickInfo">
+        <span style="color:#999;">Click anywhere on the curve to read occupancy at that dose.</span>
+        <span></span>
+    </div>
+
+    <div class="chart-hint">▲ Red marker = your inputted dose &nbsp;|&nbsp; Dashed line = FDA max dose</div>
+    <div class="fda-label" id="fdaLabel"></div>
 </div>
 
 <script>
-    // --- 1. Medication Data ---
+    // ── Medication data ──────────────────────────────────────────────────────
     const MED_DATA = {
-        'citalopram': { name: 'Citalopram (Striatum)', emax: 83.98, ed50: 2.33 },
-        'desvenlafaxine': { name: 'Desvenlafaxine (Striatum)', emax: 100.22, ed50: 16.11 },
-        'duloxetine': { name: 'Duloxetine (Thalamus)', emax: 90.75, ed50: 6.27 },
-        'escitalopram': { name: 'Escitalopram (Dorsal Raphe)', emax: 89.57, ed50: 2.72 },
-        'fluoxetine': { name: 'Fluoxetine (Striatum)', emax: 86.12, ed50: 1.89 },
-        'paroxetine': { name: 'Paroxetine (Striatum)', emax: 97.14, ed50: 5.60 },
-        'sertraline': { name: 'Sertraline (Striatum)', emax: 92.01, ed50: 7.72 },
-        'venlafaxine': { name: 'Venlafaxine XR (Striatum)', emax: 90.07, ed50: 5.80 },
-        'vortioxetine': { name: 'Vortioxetine (Raphe Nuclei)', emax: 102.24, ed50: 4.68 }
+        'citalopram':     { name: 'Citalopram (Striatum)',        emax: 83.98,  ed50: 2.33,  fdaMax: 40  },
+        'desvenlafaxine': { name: 'Desvenlafaxine (Striatum)',    emax: 100.22, ed50: 16.11, fdaMax: 100 },
+        'duloxetine':     { name: 'Duloxetine (Thalamus)',        emax: 90.75,  ed50: 6.27,  fdaMax: 120 },
+        'escitalopram':   { name: 'Escitalopram (Dorsal Raphe)',  emax: 89.57,  ed50: 2.72,  fdaMax: 20  },
+        'fluoxetine':     { name: 'Fluoxetine (Striatum)',        emax: 86.12,  ed50: 1.89,  fdaMax: 80  },
+        'paroxetine':     { name: 'Paroxetine (Striatum)',        emax: 97.14,  ed50: 5.60,  fdaMax: 60  },
+        'sertraline':     { name: 'Sertraline (Striatum)',        emax: 92.01,  ed50: 7.72,  fdaMax: 200 },
+        'venlafaxine':    { name: 'Venlafaxine XR (Striatum)',   emax: 90.07,  ed50: 5.80,  fdaMax: 225 },
+        'vortioxetine':   { name: 'Vortioxetine (Raphe Nuclei)', emax: 102.24, ed50: 4.68,  fdaMax: 20  }
     };
 
-    // --- 2. Initialize Logic ---
-    const medSelect = document.getElementById('medSelect');
-    const emaxInput = document.getElementById('emax');
-    const ed50Input = document.getElementById('ed50');
-    const doseInput = document.getElementById('dose');
+    // ── DOM refs ─────────────────────────────────────────────────────────────
+    const medSelect     = document.getElementById('medSelect');
+    const emaxInput     = document.getElementById('emax');
+    const ed50Input     = document.getElementById('ed50');
+    const doseInput     = document.getElementById('dose');
     const resultDisplay = document.getElementById('resultDisplay');
+    const clickInfo     = document.getElementById('clickInfo');
+    const fdaLabel      = document.getElementById('fdaLabel');
+    const canvas        = document.getElementById('roChart');
+    const ctx           = canvas.getContext('2d');
 
-    // Populate Dropdown
+    // ── Populate dropdown ────────────────────────────────────────────────────
     for (const [key, data] of Object.entries(MED_DATA)) {
         const option = document.createElement('option');
         option.value = key;
         option.textContent = data.name;
         medSelect.appendChild(option);
     }
-    
-    // Add Manual Option
     const manualOption = document.createElement('option');
     manualOption.value = 'manual';
     manualOption.textContent = 'Manual Input';
     medSelect.appendChild(manualOption);
 
-    // Set Default (Sertraline)
     medSelect.value = 'sertraline';
-    handleMedChange();
 
-    // --- 3. Functions ---
+    // ── RO formula ───────────────────────────────────────────────────────────
+    function computeRO(dose, emax, ed50) {
+        if (dose <= 0) return 0;
+        let ro = (emax * dose) / (ed50 + dose);
+        if (ro > emax) ro = emax;
+        if (ro < 0)    ro = 0;
+        return ro;
+    }
 
+    // ── Chart state ──────────────────────────────────────────────────────────
+    let chartState = null; // { emax, ed50, xMax, fdaMax, margin, plotW, plotH, canvasW, canvasH }
+
+    // Convert data coords → canvas pixel coords
+    function toPixel(dose, ro, state) {
+        const px = state.margin.left + (dose / state.xMax) * state.plotW;
+        const py = state.margin.top  + (1 - ro / 100) * state.plotH;
+        return { px, py };
+    }
+
+    // Convert canvas pixel → data dose
+    function toDose(px, state) {
+        return ((px - state.margin.left) / state.plotW) * state.xMax;
+    }
+
+    // ── Nice tick generator ──────────────────────────────────────────────────
+    function niceTicks(max, targetCount) {
+        const raw = max / targetCount;
+        const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+        const norm = raw / mag;
+        let nice;
+        if (norm < 1.5)      nice = 1;
+        else if (norm < 3.5) nice = 2;
+        else if (norm < 7.5) nice = 5;
+        else                  nice = 10;
+        const step = nice * mag;
+        const ticks = [];
+        for (let v = 0; v <= max + step * 0.01; v += step) {
+            ticks.push(Math.round(v * 1e9) / 1e9);
+        }
+        return ticks;
+    }
+
+    // ── Draw chart ───────────────────────────────────────────────────────────
+    function drawChart(emax, ed50, currentDose, fdaMax, clickedDose) {
+        const xMax = fdaMax * 3;
+
+        // High-DPI sizing
+        const dpr  = window.devicePixelRatio || 1;
+        const cssW = canvas.parentElement.clientWidth;
+        const cssH = 320;
+        canvas.width  = cssW * dpr;
+        canvas.height = cssH * dpr;
+        canvas.style.height = cssH + 'px';
+        ctx.scale(dpr, dpr);
+
+        const margin = { top: 30, right: 25, bottom: 50, left: 55 };
+        const plotW  = cssW - margin.left - margin.right;
+        const plotH  = cssH - margin.top  - margin.bottom;
+
+        chartState = { emax, ed50, xMax, fdaMax, margin, plotW, plotH, canvasW: cssW, canvasH: cssH };
+
+        ctx.clearRect(0, 0, cssW, cssH);
+
+        // ── Background ──
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, cssW, cssH);
+
+        // ── Grid & axes ──
+        const xTicks = niceTicks(xMax, 6);
+        const yTicks = [0, 20, 40, 60, 80, 100];
+
+        ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+        ctx.lineWidth = 1;
+
+        // Vertical grid lines
+        for (const v of xTicks) {
+            const { px } = toPixel(v, 0, chartState);
+            ctx.beginPath();
+            ctx.moveTo(px, margin.top);
+            ctx.lineTo(px, margin.top + plotH);
+            ctx.stroke();
+        }
+
+        // Horizontal grid lines
+        for (const v of yTicks) {
+            const { py } = toPixel(0, v, chartState);
+            ctx.beginPath();
+            ctx.moveTo(margin.left, py);
+            ctx.lineTo(margin.left + plotW, py);
+            ctx.stroke();
+        }
+
+        // Axes
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(margin.left, margin.top, plotW, plotH);
+
+        // X tick labels
+        ctx.fillStyle = '#555';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (const v of xTicks) {
+            const { px } = toPixel(v, 0, chartState);
+            ctx.fillText(v, px, margin.top + plotH + 8);
+        }
+
+        // Y tick labels
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (const v of yTicks) {
+            const { py } = toPixel(0, v, chartState);
+            ctx.fillText(v + '%', margin.left - 8, py);
+        }
+
+        // Axis titles
+        ctx.fillStyle = '#555';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('Dose (mg)', margin.left + plotW / 2, cssH - 2);
+
+        ctx.save();
+        ctx.translate(14, margin.top + plotH / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textBaseline = 'top';
+        ctx.fillText('SERT Occupancy (%)', 0, 0);
+        ctx.restore();
+
+        // ── FDA max dashed vertical line ──
+        const fdaPx = toPixel(fdaMax, 0, chartState).px;
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = 'rgba(52, 152, 219, 0.65)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(fdaPx, margin.top);
+        ctx.lineTo(fdaPx, margin.top + plotH);
+        ctx.stroke();
+        ctx.restore();
+
+        // FDA max label above line
+        ctx.fillStyle = 'rgba(52,152,219,0.85)';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('FDA max', fdaPx, margin.top - 2);
+
+        // ── Dose–occupancy curve (filled) ──
+        const nPts = 500;
+        ctx.beginPath();
+        for (let i = 0; i <= nPts; i++) {
+            const dose = (xMax * i) / nPts;
+            const ro   = computeRO(dose, emax, ed50);
+            const { px, py } = toPixel(dose, ro, chartState);
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        // Fill underneath
+        const { px: xEnd, py: yBase } = toPixel(xMax, 0, chartState);
+        const { px: xStart }          = toPixel(0, 0, chartState);
+        ctx.lineTo(xEnd, yBase);
+        ctx.lineTo(xStart, yBase);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(44, 62, 80, 0.06)';
+        ctx.fill();
+
+        // Stroke curve
+        ctx.beginPath();
+        for (let i = 0; i <= nPts; i++) {
+            const dose = (xMax * i) / nPts;
+            const ro   = computeRO(dose, emax, ed50);
+            const { px, py } = toPixel(dose, ro, chartState);
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = 'round';
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        // ── Clicked dose circle ──
+        if (clickedDose !== null && clickedDose >= 0 && clickedDose <= xMax) {
+            const clickedRO = computeRO(clickedDose, emax, ed50);
+            const { px, py } = toPixel(clickedDose, clickedRO, chartState);
+            ctx.beginPath();
+            ctx.arc(px, py, 7, 0, Math.PI * 2);
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(231,76,60,0.15)';
+            ctx.fill();
+        }
+
+        // ── Current-dose red triangle marker ──
+        if (currentDose >= 0 && currentDose <= xMax) {
+            const currentRO = computeRO(currentDose, emax, ed50);
+            const { px, py } = toPixel(currentDose, currentRO, chartState);
+            const s = 10; // half-size
+            ctx.beginPath();
+            ctx.moveTo(px, py - s);          // apex (up)
+            ctx.lineTo(px + s, py + s);      // bottom-right
+            ctx.lineTo(px - s, py + s);      // bottom-left
+            ctx.closePath();
+            ctx.fillStyle = '#e74c3c';
+            ctx.strokeStyle = '#c0392b';
+            ctx.lineWidth = 1.5;
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // ── Legend ──
+        const lx = margin.left + plotW - 8;
+        const ly = margin.top + 12;
+
+        // Curve swatch
+        ctx.beginPath();
+        ctx.moveTo(lx - 110, ly);
+        ctx.lineTo(lx - 90, ly);
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = '#555';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Dose–Occ. Curve', lx - 87, ly);
+
+        // Triangle swatch
+        const tx = lx - 110, ty = ly + 18;
+        ctx.beginPath();
+        ctx.moveTo(tx + 10, ty - 7);
+        ctx.lineTo(tx + 18, ty + 5);
+        ctx.lineTo(tx + 2,  ty + 5);
+        ctx.closePath();
+        ctx.fillStyle = '#e74c3c';
+        ctx.fill();
+        ctx.fillStyle = '#555';
+        ctx.textAlign = 'left';
+        ctx.fillText('Your Dose', lx - 87, ty);
+    }
+
+    // ── Persistent click dose ────────────────────────────────────────────────
+    let lastClickedDose = null;
+
+    // ── Canvas click handler ─────────────────────────────────────────────────
+    canvas.addEventListener('click', function(e) {
+        if (!chartState) return;
+        const rect = canvas.getBoundingClientRect();
+        const cssX = e.clientX - rect.left;
+        const cssY = e.clientY - rect.top;
+
+        const { margin, plotW, plotH } = chartState;
+
+        // Only within plot area
+        if (cssX < margin.left || cssX > margin.left + plotW) return;
+        if (cssY < margin.top  || cssY > margin.top  + plotH) return;
+
+        const clickedDose = toDose(cssX, chartState);
+        if (clickedDose < 0) return;
+
+        lastClickedDose = clickedDose;
+
+        const emax = parseFloat(emaxInput.value);
+        const ed50 = parseFloat(ed50Input.value);
+        const clickedRO = computeRO(clickedDose, emax, ed50);
+
+        // Redraw with click marker
+        const dose   = parseFloat(doseInput.value) || 0;
+        drawChart(emax, ed50, dose, chartState.fdaMax, clickedDose);
+
+        clickInfo.innerHTML = `
+            <span>Dose: <strong>${clickedDose.toFixed(1)} mg</strong></span>
+            <span>SERT Occupancy: <span class="click-val">${clickedRO.toFixed(2)}%</span></span>
+        `;
+    });
+
+    // ── Main handlers ────────────────────────────────────────────────────────
     function handleMedChange() {
         const selection = medSelect.value;
-        
         if (selection === 'manual') {
             emaxInput.disabled = false;
             ed50Input.disabled = false;
-            // Clear or keep previous values? Let's keep for ease, or set to 0.
-            // Keeping previous allows user to see what they were editing.
         } else {
             emaxInput.disabled = true;
             ed50Input.disabled = true;
@@ -145,6 +540,8 @@
                 ed50Input.value = MED_DATA[selection].ed50;
             }
         }
+        lastClickedDose = null;
+        clickInfo.innerHTML = '<span style="color:#999;">Click anywhere on the curve to read occupancy at that dose.</span><span></span>';
         calculateRO();
     }
 
@@ -158,18 +555,25 @@
             return;
         }
 
-        // Calculation
-        let ro = 0;
-        if ((ed50 + dose) !== 0) {
-            ro = (emax * dose) / (ed50 + dose);
-        }
-
-        // Cap at Emax visually if needed, though formula handles asymptotic behavior
-        if (ro > emax) ro = emax;
-        if (ro < 0) ro = 0;
-
+        const ro = computeRO(dose, emax, ed50);
         resultDisplay.textContent = ro.toFixed(2) + '%';
+
+        const selKey = medSelect.value;
+        const fdaMax = (MED_DATA[selKey] ? MED_DATA[selKey].fdaMax : null) || (ed50 * 10);
+
+        fdaLabel.textContent = `FDA max dose: ${fdaMax} mg  |  Chart x-axis extends to 3× FDA max (${fdaMax * 3} mg)`;
+
+        drawChart(emax, ed50, dose, fdaMax, lastClickedDose);
     }
+
+    // Redraw on window resize
+    window.addEventListener('resize', () => {
+        if (!chartState) return;
+        calculateRO();
+    });
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    window.addEventListener('load', () => handleMedChange());
 </script>
 
 </body>

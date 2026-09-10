@@ -149,6 +149,18 @@
             text-align: right;
             margin-top: 6px;
         }
+        .expand-btn {
+            background: none;
+            border: 1px solid #bbb;
+            color: #666;
+            font-size: 12px;
+            padding: 5px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        .expand-btn:hover { border-color: #3498db; color: #3498db; background: #f0f8ff; }
     </style>
 </head>
 <body>
@@ -208,6 +220,9 @@
     </div>
 
     <div class="chart-hint">▲ Red marker = your inputted dose &nbsp;|&nbsp; Dashed line = FDA max dose</div>
+    <div style="text-align:center;">
+        <button class="expand-btn" id="expandBtn" onclick="toggleDoubleRange()">Show 2× FDA max →</button>
+    </div>
     <div class="fda-label" id="fdaLabel"></div>
 </div>
 
@@ -260,7 +275,14 @@
     }
 
     // ── Chart state ──────────────────────────────────────────────────────────
-    let chartState = null; // { emax, ed50, xMax, fdaMax, margin, plotW, plotH, canvasW, canvasH }
+    let chartState = null;
+    let showDouble = false;
+
+    function toggleDoubleRange() {
+        showDouble = !showDouble;
+        document.getElementById('expandBtn').textContent = showDouble ? '← Back to FDA max' : 'Show 2× FDA max →';
+        calculateRO();
+    }
 
     // Convert data coords → canvas pixel coords
     function toPixel(dose, ro, state) {
@@ -274,27 +296,21 @@
         return ((px - state.margin.left) / state.plotW) * state.xMax;
     }
 
-    // ── Nice tick generator ──────────────────────────────────────────────────
-    function niceTicks(max, targetCount) {
-        const raw = max / targetCount;
-        const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-        const norm = raw / mag;
-        let nice;
-        if (norm < 1.5)      nice = 1;
-        else if (norm < 3.5) nice = 2;
-        else if (norm < 7.5) nice = 5;
-        else                  nice = 10;
-        const step = nice * mag;
-        const ticks = [];
-        for (let v = 0; v <= max + step * 0.01; v += step) {
-            ticks.push(Math.round(v * 1e9) / 1e9);
+    // ── Smart tick interval ──────────────────────────────────────────────────
+    // Picks a nice step size that gives ~8-10 ticks across xMax
+    function smartTickSize(xMax) {
+        const candidates = [1, 2, 5, 10, 20, 25, 50, 100];
+        let best = candidates[0], bestDiff = Infinity;
+        for (const c of candidates) {
+            const diff = Math.abs(Math.ceil(xMax / c) - 9);
+            if (diff < bestDiff) { bestDiff = diff; best = c; }
         }
-        return ticks;
+        return best;
     }
 
     // ── Draw chart ───────────────────────────────────────────────────────────
     function drawChart(emax, ed50, currentDose, fdaMax, clickedDose) {
-        const xMax = fdaMax * 2;
+        const xMax = fdaMax * (showDouble ? 2 : 1);
 
         // High-DPI sizing
         const dpr  = window.devicePixelRatio || 1;
@@ -318,10 +334,10 @@
         ctx.fillRect(0, 0, cssW, cssH);
 
         // ── Grid & axes ──
-        // 25 mg intervals; label every other tick when the range is large
+        const tickSize = smartTickSize(xMax);
         const xTicks = [];
-        for (let v = 0; v <= xMax + 0.001; v += 25) xTicks.push(Math.round(v));
-        const labelEvery = xTicks.length > 10 ? 2 : 1; // label every 50 mg when crowded
+        for (let v = 0; v <= xMax + 0.001; v += tickSize) xTicks.push(Math.round(v));
+        const labelEvery = xTicks.length > 12 ? 2 : 1;
         const yTicks = [0, 20, 40, 60, 80, 100];
 
         ctx.strokeStyle = 'rgba(0,0,0,0.07)';
@@ -554,6 +570,8 @@
             }
         }
         lastClickedDose = null;
+        showDouble = false;
+        document.getElementById('expandBtn').textContent = 'Show 2× FDA max →';
         clickInfo.innerHTML = '<span style="color:#999;">Click anywhere on the curve to read occupancy at that dose.</span><span></span>';
         calculateRO();
     }
@@ -574,7 +592,9 @@
         const selKey = medSelect.value;
         const fdaMax = (MED_DATA[selKey] ? MED_DATA[selKey].fdaMax : null) || (ed50 * 10);
 
-        fdaLabel.textContent = `FDA max dose: ${fdaMax} mg  |  Chart x-axis extends to 2× FDA max (${fdaMax * 2} mg)`;
+        fdaLabel.textContent = showDouble
+            ? `FDA max dose: ${fdaMax} mg  |  Chart extends to 2× FDA max (${fdaMax * 2} mg)`
+            : `FDA max dose: ${fdaMax} mg`;
 
         drawChart(emax, ed50, dose, fdaMax, lastClickedDose);
     }

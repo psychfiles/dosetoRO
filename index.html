@@ -219,7 +219,7 @@
         <span></span>
     </div>
 
-    <div class="chart-hint">▲ Red marker = your inputted dose &nbsp;|&nbsp; Dashed line = FDA max dose</div>
+    <div class="chart-hint">▲ Red marker = your inputted dose &nbsp;|&nbsp; Blue dashed = FDA max &nbsp;|&nbsp; Red dotted = Min. Eff. Dose</div>
     <div style="text-align:center;">
         <button class="expand-btn" id="expandBtn" onclick="toggleDoubleRange()">Show 2× FDA max →</button>
     </div>
@@ -229,15 +229,15 @@
 <script>
     // ── Medication data ──────────────────────────────────────────────────────
     const MED_DATA = {
-        'citalopram':     { name: 'Citalopram (Striatum)',        emax: 83.98,  ed50: 2.33,  fdaMax: 40  },
-        'desvenlafaxine': { name: 'Desvenlafaxine (Striatum)',    emax: 100.22, ed50: 16.11, fdaMax: 100 },
-        'duloxetine':     { name: 'Duloxetine (Thalamus)',        emax: 90.75,  ed50: 6.27,  fdaMax: 120 },
-        'escitalopram':   { name: 'Escitalopram (Dorsal Raphe)',  emax: 89.57,  ed50: 2.72,  fdaMax: 20  },
-        'fluoxetine':     { name: 'Fluoxetine (Striatum)',        emax: 86.12,  ed50: 1.89,  fdaMax: 80  },
-        'paroxetine':     { name: 'Paroxetine (Striatum)',        emax: 97.14,  ed50: 5.60,  fdaMax: 60  },
-        'sertraline':     { name: 'Sertraline (Striatum)',        emax: 92.01,  ed50: 7.72,  fdaMax: 200 },
-        'venlafaxine':    { name: 'Venlafaxine XR (Striatum)',   emax: 90.07,  ed50: 5.80,  fdaMax: 225 },
-        'vortioxetine':   { name: 'Vortioxetine (Raphe Nuclei)', emax: 102.24, ed50: 4.68,  fdaMax: 20  }
+        'citalopram':     { name: 'Citalopram (Striatum)',        emax: 83.98,  ed50: 2.33,  fdaMax: 40,  med: 20  },
+        'desvenlafaxine': { name: 'Desvenlafaxine (Striatum)',    emax: 100.22, ed50: 16.11, fdaMax: 100, med: 50  },
+        'duloxetine':     { name: 'Duloxetine (Thalamus)',        emax: 90.75,  ed50: 6.27,  fdaMax: 120, med: 60  },
+        'escitalopram':   { name: 'Escitalopram (Dorsal Raphe)',  emax: 89.57,  ed50: 2.72,  fdaMax: 20,  med: 10  },
+        'fluoxetine':     { name: 'Fluoxetine (Striatum)',        emax: 86.12,  ed50: 1.89,  fdaMax: 80,  med: 20  },
+        'paroxetine':     { name: 'Paroxetine (Striatum)',        emax: 97.14,  ed50: 5.60,  fdaMax: 60,  med: 20  },
+        'sertraline':     { name: 'Sertraline (Striatum)',        emax: 92.01,  ed50: 7.72,  fdaMax: 200, med: 50  },
+        'venlafaxine':    { name: 'Venlafaxine XR (Striatum)',   emax: 90.07,  ed50: 5.80,  fdaMax: 225, med: 75  },
+        'vortioxetine':   { name: 'Vortioxetine (Raphe Nuclei)', emax: 102.24, ed50: 4.68,  fdaMax: 20,  med: 10  }
     };
 
     // ── DOM refs ─────────────────────────────────────────────────────────────
@@ -309,7 +309,7 @@
     }
 
     // ── Draw chart ───────────────────────────────────────────────────────────
-    function drawChart(emax, ed50, currentDose, fdaMax, clickedDose) {
+    function drawChart(emax, ed50, currentDose, fdaMax, clickedDose, med) {
         const xMax = fdaMax * (showDouble ? 2 : 1);
 
         // High-DPI sizing
@@ -325,7 +325,7 @@
         const plotW  = cssW - margin.left - margin.right;
         const plotH  = cssH - margin.top  - margin.bottom;
 
-        chartState = { emax, ed50, xMax, fdaMax, margin, plotW, plotH, canvasW: cssW, canvasH: cssH };
+        chartState = { emax, ed50, xMax, fdaMax, med, margin, plotW, plotH, canvasW: cssW, canvasH: cssH };
 
         ctx.clearRect(0, 0, cssW, cssH);
 
@@ -426,6 +426,25 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillText('FDA max', fdaPx, margin.top - 2);
+
+        // ── MED red dotted vertical line ──
+        if (med != null && med > 0 && med <= xMax) {
+            const medPx = toPixel(med, 0, chartState).px;
+            ctx.save();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = 'rgba(192, 57, 43, 0.70)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(medPx, margin.top);
+            ctx.lineTo(medPx, margin.top + plotH);
+            ctx.stroke();
+            ctx.restore();
+            ctx.fillStyle = 'rgba(192, 57, 43, 0.85)';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('Min. Eff. Dose', medPx, margin.top - 2);
+        }
 
         // ── Dose–occupancy curve (filled) ──
         const nPts = 500;
@@ -547,7 +566,7 @@
 
         // Redraw with click marker
         const dose   = parseFloat(doseInput.value) || 0;
-        drawChart(emax, ed50, dose, chartState.fdaMax, clickedDose);
+        drawChart(emax, ed50, dose, chartState.fdaMax, clickedDose, chartState.med);
 
         clickInfo.innerHTML = `
             <span>Dose: <strong>${clickedDose.toFixed(1)} mg</strong></span>
@@ -591,12 +610,13 @@
 
         const selKey = medSelect.value;
         const fdaMax = (MED_DATA[selKey] ? MED_DATA[selKey].fdaMax : null) || (ed50 * 10);
+        const med    = MED_DATA[selKey] ? MED_DATA[selKey].med : null;
 
         fdaLabel.textContent = showDouble
             ? `FDA max dose: ${fdaMax} mg  |  Chart extends to 2× FDA max (${fdaMax * 2} mg)`
             : `FDA max dose: ${fdaMax} mg`;
 
-        drawChart(emax, ed50, dose, fdaMax, lastClickedDose);
+        drawChart(emax, ed50, dose, fdaMax, lastClickedDose, med);
     }
 
     // Redraw on window resize
